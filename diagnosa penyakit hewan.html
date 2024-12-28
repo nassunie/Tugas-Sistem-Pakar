@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Diagnosa Penyakit Hewan</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: url('niya.JPEG') no-repeat center center fixed;
+            background-size: cover;
+            color: #333; /* Warna teks agar tetap terlihat di atas gambar */
+        }
+        .header {
+            background: rgba(0, 0, 0, 0.5); /* Overlay transparan untuk kontras teks */
+            color: white;
+            padding: 3rem 0;
+            border-radius: 15px;
+        }
+        .btn-primary {
+            background-color: #6c63ff;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #5346c7;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .form-control, .form-select {
+            border-radius: 10px;
+        }
+        .btn-success, .btn-danger {
+            width: 100px;
+            margin: 0 10px;
+        }
+        .results {
+            background: #e9ecef;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        footer {
+            margin-top: 2rem;
+            text-align: center;
+            color: #6c757d;
+        }
+    </style>
+    
+</head>
+<body>
+    <div class="container mt-5">
+        <!-- Header -->
+        <div class="header text-center mb-5">
+            <h1>Sistem Diagnosa Penyakit Hewan</h1>
+            <p class="lead">Identifikasi penyakit pada hewan peliharaan Anda dengan mudah dan cepat!</p>
+            <button class="btn btn-primary btn-lg" onclick="startDiagnosis()">Mulai Diagnosa</button>
+        </div>
+
+        <!-- Form Input Data Hewan -->
+        <div id="dataForm" class="d-none">
+            <div class="card p-4">
+                <h2 class="text-center">Isi Data Hewan</h2>
+                <form id="animalForm">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Nama Hewan</label>
+                        <input type="text" id="name" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="animalType" class="form-label">Jenis Hewan</label>
+                        <select id="animalType" class="form-select" required>
+                            <option value="anjing">Anjing</option>
+                            <option value="kucing">Kucing</option>
+                            <option value="kelinci">Kelinci</option>
+                            <option value="burung">Burung</option>
+                            <option value="ayam">Ayam</option>
+                            <option value="bebek">Bebek</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="birthdate" class="form-label">Tanggal Lahir (YYYY-MM-DD)</label>
+                        <input type="date" id="birthdate" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="gender" class="form-label">Jenis Kelamin</label>
+                        <select id="gender" class="form-select" required>
+                            <option value="Jantan">Jantan</option>
+                            <option value="Betina">Betina</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="address" class="form-label">Alamat</label>
+                        <input type="text" id="address" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="phone" class="form-label">Nomor Telepon</label>
+                        <input type="tel" id="phone" class="form-control" required>
+                    </div>
+                    <button type="button" class="btn btn-success w-100" onclick="startQuestions()">Lanjutkan</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Pertanyaan Diagnosa -->
+        <div id="questions" class="d-none">
+            <h2>Diagnosa Gejala</h2>
+            <p id="questionText">Apakah hewan Anda mengalami gejala tertentu?</p>
+            <button class="btn btn-success" onclick="answerQuestion(true)">Ya</button>
+            <button class="btn btn-danger" onclick="answerQuestion(false)">Tidak</button>
+        </div>
+
+        <!-- Hasil Diagnosa -->
+        <div id="results" class="d-none">
+            <h2>Hasil Diagnosa</h2>
+            <div id="animalData">
+                <h3>Data Hewan</h3>
+                <p><strong>Nama:</strong> <span id="resultName"></span></p>
+                <p><strong>Jenis Hewan:</strong> <span id="resultAnimalType"></span></p>
+                <p><strong>Tanggal Lahir:</strong> <span id="resultBirthdate"></span></p>
+                <p><strong>Jenis Kelamin:</strong> <span id="resultGender"></span></p>
+                <p><strong>Alamat:</strong> <span id="resultAddress"></span></p>
+                <p><strong>Nomor Telepon:</strong> <span id="resultPhone"></span></p>
+            </div>
+            <div id="diagnosisResult">
+                <h3>Hasil Diagnosa Penyakit Hewan</h3>
+                <p id="resultText" style="white-space: pre-wrap; font-size: 16px;"></p>
+            </div>
+            <button class="btn btn-primary" onclick="downloadPDF()">Unduh Hasil PDF</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+    <script>
+        let formData;  // Global variable to store form data
+        let questions = [];
+        let answers = [];
+        const diseaseData = {
+            anjing: [
+                { name: "Parvovirus", symptoms: ["muntah", "diare berdarah", "demam", "lemas", "nafsu makan hilang"], cause: "Infeksi virus parvovirus", treatment: "Perawatan medis intensif di bawah pengawasan dokter hewan. Sediakan cairan intravena untuk mencegah dehidrasi dan gunakan terapi antibiotik untuk mencegah infeksi sekunder" },
+                { name: "Rabies", symptoms: ["gelisah", "sangat agresif", "kesulitan makan atau menelan", "kelumpuhan", "kesulitan bernafas"], cause: "Infeksi virus rabies", treatment: "Segera konsultasikan dengan dokter hewan untuk vaksinasi pasca-paparan. Hewan mungkin perlu dikarantina sesuai dengan prosedur" },
+                { name: "Distemper", symptoms: ["batuk", "bersin", "diare", "demam tinggi", "kejang"], cause: "Infeksi virus distemper", treatment: "Perawatan suportif, terapi antibiotik untuk infeksi sekunder, dan vaksinasi untuk pencegahan" },
+                { name: "Penyakit Kulit", symptoms: ["gatal", "kemerahan", "rambut rontok", "luka terbuka"], cause: "Infeksi bakteri, jamur, atau alergi", treatment: "Salep dan pengobatan anti-jamur" },
+                { name: "Otitis Eksterna", symptoms: ["gatal pada telinga", "cairan keluar dari telinga", "bau tak sedap pada telinga"], cause: "Infeksi bakteri atau jamur", treatment: "Pembersihan telinga dan antibiotik" },
+                { name: "Hipotiroidisme", symptoms: ["lesu", "rambut rontok", "penambahan berat badan", "kulit kering"], cause: "Gangguan pada kelenjar tiroid", treatment: "Obat hormon tiroid" },
+                { name: "Infeksi Saluran Kemih", symptoms: ["sulit buang air kecil", "urin berdarah", "lesu"], cause: "Infeksi bakteri", treatment: "Antibiotik" },
+                { name: "Artritis", symptoms: ["kesulitan berjalan", "lemas", "nyeri pada persendian"], cause: "Peradangan sendi", treatment: "Obat pereda nyeri dan suplemen sendi" },
+                { name: "Infeksi Mata", symptoms: ["mata merah", "kering", "bengkak di sekitar mata"], cause: "Infeksi bakteri atau virus", treatment: "Obat tetes mata antibiotik" },
+                { name: "Kanker Kulit", symptoms: ["luka tak kunjung sembuh", "benjolan abnormal"], cause: "Pertumbuhan sel kanker", treatment: "Operasi atau kemoterapi" },
+                { name: "Penyakit Jantung", symptoms: ["batuk", "lesu", "kesulitan bernafas", "perut membesar"], cause: "Gangguan fungsi jantung", treatment: "Obat jantung dan diet khusus" },
+                { name: "Penyakit Ginjal Kronis", symptoms: ["haus berlebihan", "sering buang air kecil", "muntah"], cause: "Gangguan fungsi ginjal", treatment: "Diet rendah protein dan obat" },
+                { name: "Anemia", symptoms: ["lemah", "gusi pucat", "kehilangan nafsu makan"], cause: "Kehilangan darah atau gangguan sumsum tulang", treatment: "Transfusi darah dan suplemen" },
+                { name: "Alergi Makanan", symptoms: ["gatal-gatal", "muntah", "diare"], cause: "Reaksi alergi terhadap makanan tertentu", treatment: "Diet eliminasi dan obat antihistamin" },
+                { name: "Cacingan", symptoms: ["perut membesar", "muntah", "diare"], cause: "Infeksi cacing parasit", treatment: "Obat antiparasit" },
+                { name: "Keracunan", symptoms: ["muntah", "diare", "kejang", "kesulitan bernafas"], cause: "Tertelan zat beracun", treatment: "Dekontaminasi dan perawatan intensif" },
+                { name: "Epilepsi", symptoms: ["kejang berulang", "hilang kesadaran sesaat"], cause: "Gangguan neurologis", treatment: "Obat antikejang" },
+                { name: "Demodikosis", symptoms: ["kerontokan rambut", "kulit bersisik", "gatal-gatal"], cause: "Infeksi tungau Demodex", treatment: "Obat antiparasit" },
+                { name: "Penyakit Gigi dan Gusi", symptoms: ["bau mulut", "gigi longgar", "kesulitan makan"], cause: "Plak dan bakteri", treatment: "Pembersihan gigi dan antibiotik" },
+                { name: "Pankreatitis", symptoms: ["muntah", "sakit perut", "hilang nafsu makan"], cause: "Peradangan pankreas", treatment: "Diet rendah lemak dan perawatan medis" },
+            ],
+
+            kucing: [
+                { name: "Feline Panleukopenia", symptoms: ["muntah", "diare", "lemas", "demam tinggi"], cause: "Infeksi virus panleukopenia", treatment: "Perawatan medis dan cairan" },
+                { name: "Feline Leukemia", symptoms: ["anemia", "berat badan turun", "infeksi berulang", "lemas"], cause: "Infeksi virus leukemia", treatment: "Perawatan suportif" },
+                { name: "Feline Herpesvirus", symptoms: ["bersin", "mata merah", "pilek", "batuk ringan"], cause: "Infeksi virus herpes pada kucing", treatment: "Antiviral dan perawatan suportif" },
+                { name: "Toksoplasmosis", symptoms: ["demam", "lemas", "kejang", "diare"], cause: "Infeksi parasit Toxoplasma gondii", treatment: "Antiparasit" },
+                { name: "Infeksi Saluran Kemih", symptoms: ["susah buang air kecil", "darah dalam urin", "lesu"], cause: "Infeksi bakteri", treatment: "Antibiotik dan terapi cairan" },
+                { name: "Feline Infectious Peritonitis", symptoms: ["demam terus-menerus", "perut membengkak", "lemas"], cause: "Infeksi virus corona pada kucing", treatment: "Perawatan suportif" },
+                { name: "Feline Asthma", symptoms: ["batuk kronis", "sesak napas", "mengi"], cause: "Alergi atau iritasi saluran napas", treatment: "Pengobatan dengan bronkodilator" },
+                { name: "Giardiasis", symptoms: ["diare kronis", "berat badan turun", "dehidrasi"], cause: "Infeksi parasit Giardia", treatment: "Antiparasit dan perawatan cairan" },
+                { name: "Cacingan", symptoms: ["muntah", "berat badan turun", "bulu kusam"], cause: "Infeksi parasit cacing", treatment: "Antiparasit" },
+                { name: "Kudis Kucing", symptoms: ["gatal parah", "kerontokan bulu", "kulit kemerahan"], cause: "Infeksi tungau Sarcoptes", treatment: "Obat antitungau" },
+                { name: "Abses", symptoms: ["pembengkakan kulit", "demam", "nyeri pada area abses"], cause: "Infeksi bakteri setelah luka gigitan", treatment: "Pembersihan abses dan antibiotik" },
+                { name: "Feline Diabetes", symptoms: ["banyak minum", "sering buang air kecil", "berat badan turun"], cause: "Gangguan metabolisme glukosa", treatment: "Insulin dan diet khusus" },
+                { name: "Hipertiroidisme", symptoms: ["berat badan turun", "nafsu makan meningkat", "jantung berdebar cepat"], cause: "Peningkatan hormon tiroid", treatment: "Obat antitiroid" },
+                { name: "Lipidosis Hati", symptoms: ["muntah", "penurunan berat badan", "menguningnya kulit"], cause: "Penumpukan lemak di hati", treatment: "Diet tinggi protein dan terapi cairan" },
+                { name: "Feline Calicivirus", symptoms: ["bersin", "luka pada mulut", "demam"], cause: "Infeksi virus calicivirus", treatment: "Perawatan suportif dan cairan" },
+                { name: "Ringworm", symptoms: ["kerontokan bulu", "lesi melingkar pada kulit", "gatal"], cause: "Infeksi jamur dermatofit", treatment: "Antijamur topikal dan oral" },
+                { name: "Chlamydiosis", symptoms: ["mata berair", "bersin", "batuk ringan"], cause: "Infeksi bakteri Chlamydia felis", treatment: "Antibiotik" },
+                { name: "Infeksi Telinga", symptoms: ["gatal di telinga", "kotoran telinga berlebih", "bau tidak sedap"], cause: "Infeksi bakteri atau jamur", treatment: "Pembersihan telinga dan antibiotik" },
+                { name: "Feline Hyperesthesia Syndrome", symptoms: ["kulit berkedut", "kepekaan berlebihan", "agresif tiba-tiba"], cause: "Gangguan neurologis", treatment: "Pengobatan antikejang dan pengelolaan stres" },
+                { name: "Kanker Limfoma", symptoms: ["anemia", "lemas", "pembengkakan kelenjar getah bening"], cause: "Gangguan sel limfosit", treatment: "Kemoterapi dan perawatan suportif" }
+            ],
+
+            kelinci: [
+                { name: "Myxomatosis", symptoms: ["mata bengkak", "lesu", "demam", "pembengkakan tubuh"], cause: "Infeksi virus myxoma", treatment: "Perawatan suportif dan pencegahan vaksin" },
+                { name: "Pasteurellosis", symptoms: ["pilek", "bersin", "lesu", "abses di tubuh"], cause: "Infeksi bakteri Pasteurella multocida", treatment: "Antibiotik" },
+                { name: "Coccidiosis", symptoms: ["diare berdarah", "lemas", "penurunan berat badan"], cause: "Infeksi parasit coccidia", treatment: "Pemberian antikoksidial" },
+                { name: "Infeksi Gigi", symptoms: ["sulit makan", "gigi memanjang", "penurunan berat badan"], cause: "Pertumbuhan gigi yang tidak normal", treatment: "Pemotongan gigi dan antibiotik" },
+                { name: "Heat Stroke", symptoms: ["lesu", "napas cepat", "telinga panas", "kelesuan"], cause: "Paparan suhu tinggi", treatment: "Pendinginan segera dan hidrasi" },
+                { name: "E. Cuniculi", symptoms: ["kepala miring", "gangguan koordinasi", "kelumpuhan"], cause: "Infeksi parasit Encephalitozoon cuniculi", treatment: "Antiparasit dan antiinflamasi" },
+                { name: "Bloat (Perut Kembung)", symptoms: ["perut membesar", "nyeri perut", "tidak nafsu makan"], cause: "Penyumbatan saluran pencernaan", treatment: "Intervensi medis segera" },
+                { name: "Mastitis", symptoms: ["pembengkakan kelenjar susu", "demam", "lesu"], cause: "Infeksi bakteri pada kelenjar susu", treatment: "Antibiotik" },
+                { name: "Flystrike", symptoms: ["luka terbuka", "belatung di kulit", "lesu"], cause: "Infestasi lalat", treatment: "Pembersihan luka dan antiparasit" },
+                { name: "Infeksi Telinga", symptoms: ["gatal di telinga", "kepala digelengkan terus-menerus", "kotoran telinga"], cause: "Infeksi bakteri atau tungau telinga", treatment: "Antibiotik atau obat antitungau" },
+                { name: "Pododermatitis", symptoms: ["luka pada kaki", "pincang", "bengkak di kaki"], cause: "Iritasi atau infeksi pada telapak kaki", treatment: "Perawatan luka dan antibiotik" },
+                { name: "Ketosis", symptoms: ["lemas", "berkurangnya nafsu makan", "dehidrasi"], cause: "Gangguan metabolisme lemak", treatment: "Pemberian cairan dan koreksi diet" },
+                { name: "Urolithiasis (Batu Kandung Kemih)", symptoms: ["sulit buang air kecil", "darah dalam urin", "lesu"], cause: "Pembentukan batu dalam saluran kemih", treatment: "Pengangkatan batu dan terapi cairan" },
+                { name: "Overgrown Nails", symptoms: ["kesulitan berjalan", "kuku melengkung tidak normal"], cause: "Pertumbuhan kuku yang berlebihan", treatment: "Pemotongan kuku secara teratur" },
+                { name: "Vitamin C Deficiency", symptoms: ["lesu", "berat badan turun", "masalah gigi"], cause: "Kekurangan vitamin C dalam diet", treatment: "Penambahan suplemen vitamin C" },
+                { name: "Fur Mites", symptoms: ["kerontokan bulu", "kulit gatal", "iritasi kulit"], cause: "Infeksi tungau bulu", treatment: "Obat antiparasit" },
+                { name: "Gastrointestinal Stasis", symptoms: ["tidak buang air besar", "tidak nafsu makan", "perut kembung"], cause: "Gangguan pergerakan usus", treatment: "Stimulasi motilitas usus dan terapi cairan" },
+                { name: "Kanker Rahim", symptoms: ["pembengkakan di perut", "penurunan berat badan", "lesu"], cause: "Tumor di rahim", treatment: "Pembedahan pengangkatan tumor" },
+                { name: "Alergi Makanan", symptoms: ["diare", "gatal-gatal", "iritasi kulit"], cause: "Reaksi alergi terhadap makanan tertentu", treatment: "Pengubahan pola makan" },
+                { name: "Respiratory Infections", symptoms: ["bersin", "pilek", "kesulitan bernapas"], cause: "Infeksi bakteri atau virus", treatment: "Antibiotik atau perawatan suportif" }
+            ],
+
+            burung: [
+                { name: "Psittacosis", symptoms: ["bersin", "nafsu makan menurun", "lemah", "bulu kusam"], cause: "Infeksi bakteri Chlamydia psittaci", treatment: "Antibiotik" },
+                { name: "Avian Influenza", symptoms: ["batuk", "sesak napas", "lemas", "kekurangan cairan"], cause: "Infeksi virus flu burung", treatment: "Isolasi dan perawatan intensif" },
+                { name: "Defisiensi Vitamin A", symptoms: ["kesulitan bernafas", "lesi pada kulit", "lemah"], cause: "Kekurangan vitamin A", treatment: "Pemberian suplemen vitamin A" },
+                { name: "Aspergillosis", symptoms: ["bersin", "sesak napas", "batuk"], cause: "Infeksi jamur Aspergillus", treatment: "Obat antijamur" },
+                { name: "Candidiasis", symptoms: ["kesulitan makan", "nafsu makan berkurang", "lapisan putih di mulut"], cause: "Infeksi jamur Candida", treatment: "Antijamur" },
+                { name: "Newcastle Disease", symptoms: ["kesulitan bergerak", "kelemahan", "paralisis", "diare"], cause: "Infeksi virus Newcastle", treatment: "Isolasi dan pengobatan suportif" },
+                { name: "Marek's Disease", symptoms: ["lesu", "pincang", "kelumpuhan", "berat badan turun"], cause: "Infeksi virus Marek", treatment: "Vaksinasi dan perawatan suportif" },
+                { name: "Avian Pox", symptoms: ["bintik-bintik pada kulit", "lesi", "pembengkakan"], cause: "Infeksi virus Avian Pox", treatment: "Perawatan suportif" },
+                { name: "Salmonellosis", symptoms: ["diare", "demam", "lemas", "penurunan nafsu makan"], cause: "Infeksi bakteri Salmonella", treatment: "Antibiotik" },
+                { name: "Bumblefoot", symptoms: ["luka pada kaki", "pembengkakan", "kesulitan berjalan"], cause: "Infeksi bakteri pada kaki", treatment: "Perawatan luka dan antibiotik" },
+                { name: "Egg Binding", symptoms: ["perut membengkak", "kesulitan bertelur", "lemah"], cause: "Kesulitan bertelur pada burung betina", treatment: "Perawatan medis dan pembedahan jika perlu" },
+                { name: "Chlamydiosis", symptoms: ["bersin", "nafsu makan berkurang", "kelemahan", "bulu kusam"], cause: "Infeksi bakteri Chlamydia", treatment: "Antibiotik" },
+                { name: "Trichomoniasis", symptoms: ["kesulitan makan", "nafsu makan berkurang", "bengkak pada mulut"], cause: "Infeksi parasit Trichomonas", treatment: "Antiparasit" },
+                { name: "West Nile Virus", symptoms: ["demam", "kelemahan", "kerusakan sistem saraf", "kelumpuhan"], cause: "Infeksi virus West Nile", treatment: "Isolasi dan pengobatan suportif" },
+                { name: "Proventricular Dilation Disease", symptoms: ["kesulitan makan", "penurunan berat badan", "lesu", "paralisis"], cause: "Infeksi virus Avian bornavirus", treatment: "Tidak ada pengobatan yang efektif, perawatan suportif" },
+                { name: "Fowl Pox", symptoms: ["bintik-bintik pada kulit", "lesi", "pembengkakan"], cause: "Infeksi virus Fowl Pox", treatment: "Perawatan suportif" },
+                { name: "Canary Disease", symptoms: ["kesulitan bernapas", "nafsu makan menurun", "lemah", "batuk"], cause: "Infeksi virus atau bakteri pada burung kenari", treatment: "Antibiotik atau pengobatan suportif" },
+                { name: "Avian Tuberculosis", symptoms: ["penurunan berat badan", "batuk", "lesu"], cause: "Infeksi bakteri Mycobacterium avium", treatment: "Antibiotik" },
+                { name: "Pneumonia", symptoms: ["batuk", "sesak napas", "nafsu makan menurun", "lemas"], cause: "Infeksi saluran pernapasan atas atau bawah", treatment: "Antibiotik dan perawatan suportif" },
+                { name: "Toxoplasmosis", symptoms: ["lesu", "berat badan turun", "kelumpuhan"], cause: "Infeksi parasit Toxoplasma gondii", treatment: "Antiparasit dan perawatan suportif" },
+                { name: "Cryptococcosis", symptoms: ["lesu", "kesulitan bernapas", "lesi pada kulit"], cause: "Infeksi jamur Cryptococcus", treatment: "Obat antijamur" }
+            ],
+
+            ayam: [
+                { name: "Newcastle Disease", symptoms: ["batuk", "diare", "kelumpuhan sayap", "nafsu makan menurun"], cause: "Infeksi virus Newcastle", treatment: "Perawatan suportif" },
+                { name: "Coccidiosis", symptoms: ["diare berdarah", "lesu", "turunnya produksi telur"], cause: "Infeksi parasit coccidia", treatment: "Pemberian antikoksidial" },
+                { name: "Avian Pox", symptoms: ["lesi kulit", "batuk", "nafsu makan turun"], cause: "Infeksi virus pox", treatment: "Perawatan suportif" },
+                { name: "Kolibasilosis", symptoms: ["sesak napas", "lesu", "penurunan produksi telur"], cause: "Infeksi bakteri E. coli", treatment: "Antibiotik" },
+                { name: "Marek's Disease", symptoms: ["kelumpuhan", "lesu", "penurunan produksi telur", "berat badan turun"], cause: "Infeksi virus Marek", treatment: "Vaksinasi dan perawatan suportif" },
+                { name: "Salmonellosis", symptoms: ["diare", "demam", "lesu", "penurunan nafsu makan"], cause: "Infeksi bakteri Salmonella", treatment: "Antibiotik" },
+                { name: "Avian Influenza", symptoms: ["batuk", "nafsu makan menurun", "demam", "pembengkakan kaki"], cause: "Infeksi virus influenza burung", treatment: "Isolasi dan pengobatan suportif" },
+                { name: "Infectious Bronchitis", symptoms: ["batuk", "pilek", "kesulitan bernapas", "penurunan produksi telur"], cause: "Infeksi virus bronchitis", treatment: "Vaksinasi dan perawatan suportif" },
+                { name: "Fowl Cholera", symptoms: ["lesu", "penurunan produksi telur", "keluarnya cairan dari hidung dan mulut"], cause: "Infeksi bakteri Pasteurella multocida", treatment: "Antibiotik" },
+                { name: "Mycoplasmosis", symptoms: ["batuk", "sesak napas", "lesu", "penurunan produksi telur"], cause: "Infeksi bakteri Mycoplasma gallisepticum", treatment: "Antibiotik" },
+                { name: "Fowl Pox", symptoms: ["lesi kulit", "pembengkakan mata", "penurunan nafsu makan"], cause: "Infeksi virus pox", treatment: "Perawatan suportif" },
+                { name: "Chronic Respiratory Disease", symptoms: ["batuk", "pilek", "kesulitan bernapas"], cause: "Infeksi bakteri Mycoplasma", treatment: "Antibiotik dan perawatan suportif" },
+                { name: "Botulism", symptoms: ["kelumpuhan", "kesulitan bergerak", "lemas"], cause: "Keracunan akibat bakteri Clostridium botulinum", treatment: "Perawatan suportif dan pencegahan keracunan" },
+                { name: "Egg Peritonitis", symptoms: ["perut bengkak", "kesulitan bertelur", "demam"], cause: "Penyakit akibat infeksi atau ketidakseimbangan hormon", treatment: "Perawatan medis dan pembedahan jika diperlukan" },
+                { name: "Ascites", symptoms: ["perut membesar", "kesulitan bernapas", "lesu"], cause: "Kelebihan cairan di rongga perut", treatment: "Perawatan suportif dan pengobatan di bawah pengawasan dokter hewan" },
+                { name: "Candidiasis", symptoms: ["kesulitan makan", "lapisan putih di mulut", "nafsu makan berkurang"], cause: "Infeksi jamur Candida", treatment: "Obat antijamur" },
+                { name: "Laryngotracheitis", symptoms: ["batuk", "kesulitan bernapas", "serak"], cause: "Infeksi virus laringotrakeitis", treatment: "Perawatan suportif dan antibiotik" },
+                { name: "Red Mite Infestation", symptoms: ["kehilangan darah", "lembab dan gelisah", "kerusakan kulit"], cause: "Infestasi kutu merah", treatment: "Perawatan lingkungan dan pengendalian kutu" },
+                { name: "Trichomoniasis", symptoms: ["kesulitan makan", "nafsu makan menurun", "bengkak pada mulut"], cause: "Infeksi parasit Trichomonas gallinae", treatment: "Antiparasit" },
+                { name: "Coryza", symptoms: ["pilek", "batuk", "nafsu makan berkurang", "lesu"], cause: "Infeksi virus atau bakteri pada saluran pernapasan atas", treatment: "Antibiotik dan perawatan suportif" },
+                { name: "Vitamin A Deficiency", symptoms: ["kesulitan bernapas", "kerusakan kulit", "lesu"], cause: "Kekurangan vitamin A", treatment: "Pemberian suplemen vitamin A" }
+            ],
+
+            bebek: [
+                { name: "Duck Virus Hepatitis", symptoms: ["lemah", "kelumpuhan", "nafsu makan hilang"], cause: "Infeksi virus hepatitis pada bebek", treatment: "Perawatan suportif" },
+                { name: "Botulism", symptoms: ["kelumpuhan", "kesulitan bergerak", "kesulitan bernafas"], cause: "Keracunan bakteri Clostridium botulinum", treatment: "Pemberian antitoksin dan terapi cairan" },
+                { name: "Pasteurellosis", symptoms: ["batuk", "diare", "lesu"], cause: "Infeksi bakteri Pasteurella", treatment: "Antibiotik" },
+                { name: "Duck Plague", symptoms: ["batuk", "kelumpuhan", "diare berdarah"], cause: "Infeksi virus herpes pada bebek", treatment: "Perawatan suportif dan vaksinasi" },
+                { name: "Avian Influenza", symptoms: ["batuk", "demam", "nafsu makan menurun", "sesak napas"], cause: "Infeksi virus influenza burung", treatment: "Isolasi dan pengobatan suportif" },
+                { name: "Salmonellosis", symptoms: ["diare", "demam", "penurunan nafsu makan"], cause: "Infeksi bakteri Salmonella", treatment: "Antibiotik" },
+                { name: "Coccidiosis", symptoms: ["diare berdarah", "lesu", "penurunan berat badan"], cause: "Infeksi parasit coccidia", treatment: "Pemberian antikoksidial" },
+                { name: "Mycoplasmosis", symptoms: ["batuk", "sesak napas", "penurunan nafsu makan"], cause: "Infeksi bakteri Mycoplasma", treatment: "Antibiotik" },
+                { name: "Campylobacteriosis", symptoms: ["diare", "demam", "penurunan nafsu makan"], cause: "Infeksi bakteri Campylobacter", treatment: "Antibiotik" },
+                { name: "Trichomoniasis", symptoms: ["lesu", "kesulitan makan", "peradangan mulut"], cause: "Infeksi parasit Trichomonas", treatment: "Obat antiparasit" },
+                { name: "Fowl Cholera", symptoms: ["lesu", "diare", "pembengkakan pada tubuh"], cause: "Infeksi bakteri Pasteurella multocida", treatment: "Antibiotik" },
+                { name: "Duck Malaria", symptoms: ["demam", "lemas", "penurunan berat badan"], cause: "Infeksi parasit plasmodium pada bebek", treatment: "Obat antimalaria" },
+                { name: "Avian Pox", symptoms: ["lesi kulit", "nafsu makan berkurang", "batuk ringan"], cause: "Infeksi virus pox pada burung", treatment: "Perawatan suportif" },
+                { name: "Infectious Bursal Disease", symptoms: ["lemas", "demam", "gangguan pernapasan"], cause: "Infeksi virus pada bebek", treatment: "Perawatan suportif" },
+                { name: "Colibacillosis", symptoms: ["batuk", "pilek", "sesak napas"], cause: "Infeksi bakteri E. coli", treatment: "Antibiotik" },
+                { name: "Respiratory Disease Complex", symptoms: ["batuk", "kesulitan bernafas", "lesu"], cause: "Infeksi kombinasi bakteri dan virus", treatment: "Perawatan suportif dan antibiotik" },
+                { name: "Necrotic Enteritis", symptoms: ["diare berdarah", "perut kembung", "lesu"], cause: "Infeksi bakteri Clostridium perfringens", treatment: "Antibiotik dan pengobatan suportif" },
+                { name: "Avian Encephalomyelitis", symptoms: ["kelumpuhan", "tremor", "lesu"], cause: "Infeksi virus encephalomyelitis", treatment: "Perawatan suportif" },
+                { name: "Enteritis", symptoms: ["diare", "lesu", "dehidrasi"], cause: "Peradangan pada usus, bisa disebabkan oleh berbagai bakteri atau virus", treatment: "Antibiotik dan rehidrasi" },
+                { name: "Chronic Respiratory Disease", symptoms: ["batuk", "nafsu makan menurun", "kesulitan bernapas"], cause: "Infeksi bakteri pada saluran pernapasan", treatment: "Antibiotik dan perawatan suportif" },
+                { name: "Toxoplasmosis", symptoms: ["lesu", "penurunan berat badan", "kesulitan bernapas"], cause: "Infeksi parasit Toxoplasma gondii", treatment: "Obat antiparasit" }
+            ]
+        };
+
+        function startDiagnosis() {
+            document.querySelector('.btn-lg').classList.add('d-none');
+            document.getElementById('dataForm').classList.remove('d-none');
+        }
+
+        function startQuestions() {
+            const name = document.getElementById('name').value.trim();
+            const animalType = document.getElementById('animalType').value.trim();
+            const birthdate = document.getElementById('birthdate').value.trim();
+            const gender = document.getElementById('gender').value.trim();
+            const address = document.getElementById('address').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+
+            // Validasi input
+            if (!name || !animalType || !birthdate || !gender || !address || !phone) {
+                alert("Semua data harus diisi!");
+                return;
+            }
+
+            // Menyimpan data form untuk digunakan pada langkah berikutnya
+            formData = { name, animalType, birthdate, gender, address, phone };
+            
+            // Menyiapkan data pertanyaan berdasarkan jenis hewan
+            questions = diseaseData[animalType].flatMap(d => d.symptoms.map(s => ({ disease: d.name, symptom: s })));
+            answers = [];
+
+            document.getElementById('dataForm').classList.add('d-none');
+            document.getElementById('questions').classList.remove('d-none');
+            askNextQuestion();
+        }
+
+        function askNextQuestion() {
+            if (answers.length < questions.length) {
+                document.getElementById('questionText').textContent =
+                    `Apakah hewan Anda mengalami gejala '${questions[answers.length].symptom}'?`;
+            } else {
+                finishDiagnosis();
+            }
+        }
+
+        function answerQuestion(answer) {
+            answers.push(answer);
+            askNextQuestion();
+        }
+
+        function finishDiagnosis() {
+            document.getElementById('questions').classList.add('d-none');
+            document.getElementById('results').classList.remove('d-none');
+
+            const scores = {};
+            questions.forEach((q, i) => {
+                if (answers[i]) scores[q.disease] = (scores[q.disease] || 0) + 1;
+            });
+            const topDisease = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
+
+            // Tampilkan data hewan
+            document.getElementById('resultName').textContent = formData.name;
+            document.getElementById('resultAnimalType').textContent = formData.animalType;
+            document.getElementById('resultBirthdate').textContent = formData.birthdate;
+            document.getElementById('resultGender').textContent = formData.gender;
+            document.getElementById('resultAddress').textContent = formData.address;
+            document.getElementById('resultPhone').textContent = formData.phone;
+
+            if (topDisease) {
+                const disease = diseaseData[formData.animalType].find(d => d.name === topDisease[0]);
+                document.getElementById('resultText').textContent =
+                    `Hasil Diagnosa: ${disease.name}\n\nPenyebab: ${disease.cause}\n\nSaran Pengobatan: ${disease.treatment}`;
+            } else {
+                document.getElementById('resultText').textContent =
+                    "Hasil Diagnosa: Tidak ditemukan penyakit yang cocok. Silakan konsultasikan dengan dokter.";
+            }
+        }
+
+        async function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // Data Hewan
+            doc.setFontSize(16);
+            doc.text("Data Hewan", 10, 10);
+            doc.setFontSize(12);
+            doc.text(`Nama: ${formData.name}`, 10, 20);
+            doc.text(`Jenis Hewan: ${formData.animalType}`, 10, 30);
+            doc.text(`Tanggal Lahir: ${formData.birthdate}`, 10, 40);
+            doc.text(`Jenis Kelamin: ${formData.gender}`, 10, 50);
+            doc.text(`Alamat: ${formData.address}`, 10, 60);
+            doc.text(`Nomor Telepon: ${formData.phone}`, 10, 70);
+
+            // Hasil Diagnosa
+            doc.setFontSize(16);
+            doc.text("Hasil Diagnosa Penyakit Hewan", 10, 90);
+            doc.setFontSize(12);
+
+            const resultText = document.getElementById('resultText').textContent;
+            const lines = resultText.split('\n');
+
+            lines.forEach((line, index) => {
+                doc.text(line, 10, 100 + index * 10);
+            });
+
+            doc.save("Hasil_Diagnosa.pdf");
+        }
+    </script>
+</body>
+</html>
